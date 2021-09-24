@@ -7,7 +7,7 @@
 bench_init 1 0
 
 # Add benchmarks
-bench_add "" 10 "echo xx"
+bench_add "Sleepy" 10 "sleep 0.1"
 bench_add "" 10 "date +%s"
 bench_add "" 10 "date +%N"
 
