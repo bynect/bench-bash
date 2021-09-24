@@ -1,0 +1,132 @@
+#!/bin/bash
+#vim: syn=bash
+
+# Initialize (or reset) the benchmarking environment
+#
+# bench_init color
+bench_init() {
+	BENCH_COLOR=$1
+	BENCH_COUNTER=0
+	return 0
+}
+
+# Add a benchmark to the benchmarking environment
+#
+# bench_add name runs cmd [inf] [outf] [errf]
+bench_add() {
+	local name="#$BENCH_COUNTER"
+	if [ -n "$1" ]
+	then
+		name="$1"
+	fi
+
+	declare -g "BENCH_NAME_$BENCH_COUNTER"="$name"
+	declare -g -i "BENCH_RUNS_$BENCH_COUNTER"="$2"
+	declare -g "BENCH_CMD_$BENCH_COUNTER"="$3"
+
+	local inf=""
+	if [ -n "$4" ]
+	then
+		inf="$4"
+	fi
+
+	local outf="bench.$name.log"
+	if [ -n "$5" ]
+	then
+		outf="$5"
+	fi
+
+	local errf="bench.$name.log"
+	if [ -n "$6" ]
+	then
+		errf="$6"
+	fi
+
+	declare -g "BENCH_INF_$BENCH_COUNTER"="$inf"
+	declare -g "BENCH_OUTF_$BENCH_COUNTER"="$outf"
+	declare -g "BENCH_ERRF_$BENCH_COUNTER"="$errf"
+
+	((++BENCH_COUNTER))
+	return 0
+}
+
+# Run benchmarks in the benchmarking environment
+bench_run() {
+	if [ "$BENCH_COUNTER" -eq 0 ]
+	then
+		return 1
+	fi
+
+	if [ "$BENCH_COLOR" ]
+	then
+		RED="\033[31m"
+		GREEN="\033[32m"
+		MAGENTA="\033[35m"
+		CLEAR="\033[0m"
+		BOLD="\033[1m"
+	else
+		RED=""
+		GREEN=""
+		MAGENTA=""
+		CLEAN=""
+		BOLD=""
+	fi
+
+	local start=`date +%s`
+	local fast_name=""
+	local fast_time=$((2 ** 32))
+
+	local slow_name=""
+	local slow_time=0
+
+	for ((i=0; i < $BENCH_COUNTER; i++))
+	do
+		local name="BENCH_NAME_$i"
+		local runs="BENCH_RUNS_$i"
+		local cmd="BENCH_CMD_$i"
+		local inf="BENCH_INF_$i"
+		local outf="BENCH_OUTF_$i"
+		local errf="BENCH_ERRF_$i"
+
+		name="${!name}"
+		runs="${!runs}"
+		cmd="${!cmd}"
+		inf="${!inf}"
+		outf="${!outf}"
+		errf="${!errf}"
+
+		local cmd2="time $cmd >>$outf 2>>$errf"
+		if [ -n "$inf" ]
+		then
+			cmd2="cat $inf | $cmd2"
+		fi
+
+		declare -a "results"
+		declare -a "results_1"
+		declare -a "results_2"
+
+		local errs=0
+
+		for ((j=0; j < $runs; j++))
+		do
+			results[j]=`eval "$cmd2"`
+		done
+
+		local succs=$((runs - errs))
+
+		echo -e "Benchmark $BOLD$name$CLEAR: $cmd"
+		echo -e "  Real time:"
+		echo -e "  User time:"
+		echo -e "  System time:"
+		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
+				"over $BOLD$runs$CLEAR runs"
+	done
+
+	local end=`date +%s`
+	local total=$((end - start))
+
+	echo "Summary:"
+	echo -e "  Total elapsed time: $BOLD$total$CLEAR seconds"
+	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR ()"
+	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR ()"
+}
