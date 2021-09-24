@@ -57,6 +57,8 @@ bench_run
 
 ## Example
 
+Example output, obtained from running [`test.sh`](test.sh) as of commit `ae7ae900f2c47c2dfd255d6a9f27f7b6c678cff8`.
+
 ```
 $ ./test
 Benchmark Sleepy: `sleep 0.1`
