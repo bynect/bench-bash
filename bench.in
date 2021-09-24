@@ -68,19 +68,23 @@ bench_add() {
 }
 
 # Internal
+#
+# Calculate mean, population standard deviation and standard error
 _bench_stat() {
 	local data="$@"
 	data="${data//\ /$'\n'}"
+	local len=$(wc -w <<< "$data")
 
 	_BENCH_MEAN=$(awk '{sum+=$1} END {print sum/NR}' <<< "$data")
 	_BENCH_DEVIATION=$(awk "{sum+=(\$1-$_BENCH_MEAN)^2} END {print sqrt((1/NR)*sum)}" <<< "$data")
-	_BENCH_ERROR=$(bc -l <<< "$_BENCH_DEVIATION / sqrt(${#data[@]})")
+	_BENCH_ERROR=$(bc <<< "scale=4; tmp=$_BENCH_DEVIATION / sqrt($len); if (tmp>0 && tmp<1) print 0; tmp")
 	return 0
 }
 
 # Internal
 #
 # Invoke to test _bench_stat on a defined set
+# Numbers may vary a little depending on precision
 _bench_test() {
 	_bench_stat "0.556" "1.456" "45.111" "7.812" "5.001"
 
@@ -100,10 +104,20 @@ _bench_test() {
 		echo "FAIL"
 	fi
 
+	echo -n "Error test: "
+	if (( $(bc <<< "$_BENCH_ERROR == 7.4969") ))
+	then
+		echo "PASS"
+	else
+		echo "FAIL"
+	fi
+
 	return 0
 }
 
 # Run benchmarks in the benchmarking environment
+#
+# bench_run
 bench_run() {
 	if [ "$BENCH_COUNTER" -eq 0 ]
 	then
@@ -204,6 +218,7 @@ bench_run() {
 		echo -e "    Range: $YELLOW$real_max$CLEAR s max ... $GREEN$real_min$CLEAR s min"
 		echo -e "    Mean: $CYAN$real_mean$CLEAR s ± $MAGENTA$real_error$CLEAR s"
 		echo -e "    Deviation: $MAGENTA$real_deviation$CLEAR s"
+		echo -e "    Error: $MAGENTA$real_error$CLEAR s"
 
 		local user_sorted=($(sort -n <<< "${user_times[*]}"))
 		local user_max=${user_sorted[$((runs - 1))]}
@@ -218,6 +233,7 @@ bench_run() {
 		echo -e "    Range: $YELLOW$user_max$CLEAR s max ... $GREEN$user_min$CLEAR s min"
 		echo -e "    Mean: $CYAN$user_mean$CLEAR s ± $MAGENTA$user_error$CLEAR s"
 		echo -e "    Deviation: $MAGENTA$user_deviation$CLEAR s"
+		echo -e "    Error: $MAGENTA$user_error$CLEAR s"
 
 		local sys_sorted=($(sort -n <<< "${sys_times[*]}"))
 		local sys_max=${sys_sorted[$((runs - 1))]}
@@ -232,6 +248,7 @@ bench_run() {
 		echo -e "    Range: $YELLOW$sys_max$CLEAR s max ... $GREEN$sys_min$CLEAR s min"
 		echo -e "    Mean: $CYAN$sys_mean$CLEAR s ± $MAGENTA$sys_error$CLEAR s"
 		echo -e "    Deviation: $MAGENTA$sys_deviation$CLEAR s"
+		echo -e "    Error: $MAGENTA$sys_error$CLEAR s"
 
 		local succs=$((runs - errs))
 		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
@@ -263,7 +280,7 @@ bench_run() {
 			"$CYAN$slow_time$CLEAR s ± $MAGENTA$slow_deviation$CLEAR s"
 	echo "  Total time:"
 	echo -e "    Elapsed since run: $CYAN$total$CLEAR s"
-echo -e "    Elapsed since init: $CYAN$total2$CLEAR s"
+	echo -e "    Elapsed since init: $CYAN$total2$CLEAR s"
 
 	TIMEFORMAT=old_format
 }
