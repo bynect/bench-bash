@@ -67,6 +67,42 @@ bench_add() {
 	return 0
 }
 
+# Internal
+_bench_stat() {
+	local data="$@"
+	data="${data//\ /$'\n'}"
+
+	_BENCH_MEAN=$(awk '{sum+=$1} END {print sum/NR}' <<< "$data")
+	_BENCH_DEVIATION=$(awk "{sum+=(\$1-$_BENCH_MEAN)^2} END {print sqrt((1/NR)*sum)}" <<< "$data")
+	_BENCH_ERROR=$(bc -l <<< "$_BENCH_DEVIATION / sqrt(${#data[@]})")
+	return 0
+}
+
+# Internal
+#
+# Invoke to test _bench_stat on a defined set
+_bench_test() {
+	_bench_stat "0.556" "1.456" "45.111" "7.812" "5.001"
+
+	echo -n "Mean test: "
+	if (( $(bc <<< "$_BENCH_MEAN == 11.9872") ))
+	then
+		echo "PASS"
+	else
+		echo "FAIL"
+	fi
+
+	echo -n "Deviation test: "
+	if (( $(bc <<< "$_BENCH_DEVIATION == 16.7631") ))
+	then
+		echo "PASS"
+	else
+		echo "FAIL"
+	fi
+
+	return 0
+}
+
 # Run benchmarks in the benchmarking environment
 bench_run() {
 	if [ "$BENCH_COUNTER" -eq 0 ]
@@ -159,34 +195,43 @@ bench_run() {
 		local real_max=${real_sorted[$((runs - 1))]}
 		local real_min=${real_sorted[0]}
 
-		local real_mean=${real_times[0]}
-		local real_deviation=0
+		_bench_stat ${real_times[*]}
+		local real_mean="$_BENCH_MEAN"
+		local real_deviation="$_BENCH_DEVIATION"
+		local real_error="$_BENCH_ERROR"
 
 		echo -e "  Real time:"
-		echo -e "    Mean: $CYAN$real_mean$CLEAR s ± $MAGENTA$real_deviation$CLEAR s"
 		echo -e "    Range: $YELLOW$real_max$CLEAR s max ... $GREEN$real_min$CLEAR s min"
+		echo -e "    Mean: $CYAN$real_mean$CLEAR s ± $MAGENTA$real_error$CLEAR s"
+		echo -e "    Deviation: $MAGENTA$real_deviation$CLEAR s"
 
 		local user_sorted=($(sort -n <<< "${user_times[*]}"))
 		local user_max=${user_sorted[$((runs - 1))]}
 		local user_min=${user_sorted[0]}
 
-		local user_mean=${user_times[0]}
-		local user_deviation=0
+		_bench_stat ${user_times[*]}
+		local user_mean="$_BENCH_MEAN"
+		local user_deviation="$_BENCH_DEVIATION"
+		local user_error="$_BENCH_ERROR"
 
 		echo -e "  User time:"
-		echo -e "    Mean: $CYAN$user_mean$CLEAR s ± $MAGENTA$user_deviation$CLEAR s"
 		echo -e "    Range: $YELLOW$user_max$CLEAR s max ... $GREEN$user_min$CLEAR s min"
+		echo -e "    Mean: $CYAN$user_mean$CLEAR s ± $MAGENTA$user_error$CLEAR s"
+		echo -e "    Deviation: $MAGENTA$user_deviation$CLEAR s"
 
 		local sys_sorted=($(sort -n <<< "${sys_times[*]}"))
 		local sys_max=${sys_sorted[$((runs - 1))]}
 		local sys_min=${sys_sorted[0]}
 
-		local sys_mean=${sys_times[0]}
-		local sys_deviation=0
+		_bench_stat ${sys_times[*]}
+		local sys_mean="$_BENCH_MEAN"
+		local sys_deviation="$_BENCH_DEVIATION"
+		local sys_error="$_BENCH_ERROR"
 
 		echo -e "  System time:"
-		echo -e "    Mean: $CYAN$sys_mean$CLEAR s ± $MAGENTA$sys_deviation$CLEAR s"
 		echo -e "    Range: $YELLOW$sys_max$CLEAR s max ... $GREEN$sys_min$CLEAR s min"
+		echo -e "    Mean: $CYAN$sys_mean$CLEAR s ± $MAGENTA$sys_error$CLEAR s"
+		echo -e "    Deviation: $MAGENTA$sys_deviation$CLEAR s"
 
 		local succs=$((runs - errs))
 		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
@@ -196,14 +241,14 @@ bench_run() {
 		then
 			fast_name=$name
 			fast_time=$real_mean
-			fast_deviation=$real_deviation
+			fast_deviation=$real_error
 		fi
 
 		if (( $(bc <<< "$real_mean >= $slow_time") ))
 		then
 			slow_name=$name
 			slow_time=$real_mean
-			slow_deviation=$real_deviation
+			slow_deviation=$real_error
 		fi
 	done
 
