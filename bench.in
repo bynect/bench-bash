@@ -2,7 +2,7 @@
 #vim: syn=bash
 
 # Global environment
-# Modify by using bench_init
+# Modify only by using bench_init
 BENCH_COLOR=1
 BENCH_DEFAULT_LOG=0
 BENCH_COUNTER=0
@@ -41,7 +41,7 @@ bench_add() {
 	if [ -n "$5" ]
 	then
 		outf="$5"
-	elif [ $BENCH_DEFAULT_LOG ]
+	elif [ "$BENCH_DEFAULT_LOG" -ne 0 ]
 	then
 		errf="bench.$name.log"
 	fi
@@ -50,7 +50,7 @@ bench_add() {
 	if [ -n "$6" ]
 	then
 		errf="$6"
-	elif [ $BENCH_DEFAULT_LOG ]
+	elif [ "$BENCH_DEFAULT_LOG" -ne 0 ]
 	then
 		errf="bench.$name.log"
 	fi
@@ -70,7 +70,7 @@ bench_run() {
 		return 1
 	fi
 
-	if [ $BENCH_COLOR ]
+	if [ "$BENCH_COLOR" -ne 0 ]
 	then
 		RED="\033[31m"
 		GREEN="\033[32m"
@@ -133,9 +133,9 @@ bench_run() {
 			local tmp=$(eval "$cmd2"; echo $?)
 			local tmp2=($tmp)
 
-			real_times[j]=tmp2[0]
-			user_times[j]=tmp2[1]
-			sys_times[j]=tmp2[2]
+			real_times[j]=${tmp2[0]}
+			user_times[j]=${tmp2[1]}
+			sys_times[j]=${tmp2[2]}
 
 			if [ "${tmp2[3]}" -ne 0 ]
 			then
@@ -143,15 +143,50 @@ bench_run() {
 			fi
 		done
 
-		local succs=$((runs - errs))
-
 		echo -e "Benchmark $BOLD$name$CLEAR: $cmd"
+
+		local real_mean=${real_times[0]}
+		local real_deviation=0
+		local real_max=0
+		local real_min=0
+
 		echo -e "  Real time:"
+		echo -e "    Mean: $real_mean ± $real_deviation"
+		echo -e "    Range: $BLUE$real_max$CLEAR max ... $BLUE$real_min$CLEAR min"
+
+		local user_mean=${user_times[0]}
+		local user_deviation=0
+		local user_max=0
+		local user_min=0
+
 		echo -e "  User time:"
+		echo -e "    Mean: $user_mean ± $user_deviation"
+		echo -e "    Range: $BLUE$user_max$CLEAR max ... $BLUE$user_min$CLEAR min"
+
+		local sys_mean=${sys_times[0]}
+		local sys_deviation=0
+		local sys_max=0
+		local sys_min=0
+
 		echo -e "  System time:"
+		echo -e "    Mean: $sys_mean ± $sys_deviation"
+		echo -e "    Range: $BLUE$sys_max$CLEAR max ... $BLUE$sys_min$CLEAR min"
+
+		local succs=$((runs - errs))
 		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
 				"over $BOLD$runs$CLEAR runs"
 
+		if [ $(echo "$real_mean <= $fast_time" | bc) == "1" ]
+		then
+			fast_name=$name
+			fast_time=$real_mean
+		fi
+
+		if [ $(echo "$real_mean >= $slow_time" | bc) == "1" ]
+		then
+			slow_name=$name
+			slow_time=$real_mean
+		fi
 	done
 
 	local end=$(date +%s)
@@ -159,8 +194,8 @@ bench_run() {
 
 	echo "Summary:"
 	echo -e "  Total elapsed time: $BOLD$total$CLEAR seconds"
-	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR ()"
-	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR ()"
+	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR ($fast_time)"
+	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR ($slow_time)"
 
 	TIMEFORMAT=old_format
 }
