@@ -72,13 +72,15 @@ bench_run() {
 		BOLD=""
 	fi
 
-	local start=`date +%s`
+	local today=$(date)
+
 	local fast_name=""
 	local fast_time=$((2 ** 32))
 
 	local slow_name=""
 	local slow_time=0
 
+	local start=$(date +%s)
 	for ((i=0; i < $BENCH_COUNTER; i++))
 	do
 		local name="BENCH_NAME_$i"
@@ -95,21 +97,27 @@ bench_run() {
 		outf="${!outf}"
 		errf="${!errf}"
 
-		local cmd2="time $cmd >>$outf 2>>$errf"
+		echo "=========== $today ===========" >> "$outf"
+		echo "=========== $today ===========" >> "$errf"
+
+		local cmd2="$cmd >>$outf 2>>$errf"
 		if [ -n "$inf" ]
 		then
 			cmd2="cat $inf | $cmd2"
 		fi
+		cmd2="{ time $cmd2 ; } 2>&1"
 
-		declare -a "results"
-		declare -a "results_1"
-		declare -a "results_2"
+		declare -a "real_times"
+		declare -a "user_times"
+		declare -a "sys_times"
 
 		local errs=0
+		local tmp
 
 		for ((j=0; j < $runs; j++))
 		do
-			results[j]=`eval "$cmd2"`
+			tmp=$(eval "$cmd2" 2>&1)
+			real_times[j]=$tmp
 		done
 
 		local succs=$((runs - errs))
@@ -120,9 +128,10 @@ bench_run() {
 		echo -e "  System time:"
 		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
 				"over $BOLD$runs$CLEAR runs"
+
 	done
 
-	local end=`date +%s`
+	local end=$(date +%s)
 	local total=$((end - start))
 
 	echo "Summary:"

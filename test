@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Include the script
-. "`pwd`/bench.in"
+. "$(pwd)/bench.in"
 
 # Init environment
 bench_init 1
