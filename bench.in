@@ -73,6 +73,7 @@ bench_run() {
 	fi
 
 	local today=$(date)
+	TIMEFORMAT="%3R %3U %3S"
 
 	local fast_name=""
 	local fast_time=$((2 ** 32))
@@ -112,12 +113,14 @@ bench_run() {
 		declare -a "sys_times"
 
 		local errs=0
-		local tmp
-
 		for ((j=0; j < $runs; j++))
 		do
-			tmp=$(eval "$cmd2" 2>&1)
-			real_times[j]=$tmp
+			local tmp=$(eval "$cmd2" 2>&1)
+			local tmp2=($tmp)
+
+			real_times[j]=tmp2[0]
+			user_times[j]=tmp2[1]
+			sys_times[j]=tmp2[2]
 		done
 
 		local succs=$((runs - errs))
