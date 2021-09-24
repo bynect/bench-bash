@@ -1,11 +1,18 @@
 #!/bin/bash
 #vim: syn=bash
 
+# Global environment
+# Modify by using bench_init
+BENCH_COLOR=1
+BENCH_DEFAULT_LOG=0
+BENCH_COUNTER=0
+
 # Initialize (or reset) the benchmarking environment
 #
-# bench_init color
+# bench_init use_color default_log
 bench_init() {
 	BENCH_COLOR=$1
+	BENCH_DEFAULT_LOG=$2
 	BENCH_COUNTER=0
 	return 0
 }
@@ -30,16 +37,22 @@ bench_add() {
 		inf="$4"
 	fi
 
-	local outf="bench.$name.log"
+	local outf="/dev/null"
 	if [ -n "$5" ]
 	then
 		outf="$5"
+	elif [ $BENCH_DEFAULT_LOG ]
+	then
+		errf="bench.$name.log"
 	fi
 
-	local errf="bench.$name.log"
+	local errf="/dev/null"
 	if [ -n "$6" ]
 	then
 		errf="$6"
+	elif [ $BENCH_DEFAULT_LOG ]
+	then
+		errf="bench.$name.log"
 	fi
 
 	declare -g "BENCH_INF_$BENCH_COUNTER"="$inf"
@@ -57,7 +70,7 @@ bench_run() {
 		return 1
 	fi
 
-	if [ "$BENCH_COLOR" ]
+	if [ $BENCH_COLOR ]
 	then
 		RED="\033[31m"
 		GREEN="\033[32m"
@@ -72,7 +85,7 @@ bench_run() {
 		BOLD=""
 	fi
 
-	local today=$(date)
+	local old_format="$TIMEFORMAT"
 	TIMEFORMAT="%3R %3U %3S"
 
 	local fast_name=""
@@ -81,7 +94,9 @@ bench_run() {
 	local slow_name=""
 	local slow_time=0
 
+	local today=$(date)
 	local start=$(date +%s)
+
 	for ((i=0; i < $BENCH_COUNTER; i++))
 	do
 		local name="BENCH_NAME_$i"
@@ -98,8 +113,8 @@ bench_run() {
 		outf="${!outf}"
 		errf="${!errf}"
 
-		echo "=========== $today ===========" >> "$outf"
-		echo "=========== $today ===========" >> "$errf"
+		echo "==== Benchmark started on $today ====" >> "$outf"
+		echo "==== Benchmark started on $today ====" >> "$errf"
 
 		local cmd2="$cmd >>$outf 2>>$errf"
 		if [ -n "$inf" ]
@@ -115,12 +130,17 @@ bench_run() {
 		local errs=0
 		for ((j=0; j < $runs; j++))
 		do
-			local tmp=$(eval "$cmd2" 2>&1)
+			local tmp=$(eval "$cmd2"; echo $?)
 			local tmp2=($tmp)
 
 			real_times[j]=tmp2[0]
 			user_times[j]=tmp2[1]
 			sys_times[j]=tmp2[2]
+
+			if [ "${tmp2[3]}" -ne 0 ]
+			then
+				((++errs))
+			fi
 		done
 
 		local succs=$((runs - errs))
@@ -141,4 +161,6 @@ bench_run() {
 	echo -e "  Total elapsed time: $BOLD$total$CLEAR seconds"
 	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR ()"
 	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR ()"
+
+	TIMEFORMAT=old_format
 }

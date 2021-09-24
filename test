@@ -4,10 +4,10 @@
 . "$(pwd)/bench.in"
 
 # Init environment
-bench_init 1
+bench_init 0 0
 
 # Add benchmarks
-bench_add "" 10 "date"
+bench_add "" 10 "sleep 1"
 bench_add "" 10 "date +%s"
 bench_add "" 10 "date +%N"
 
