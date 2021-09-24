@@ -6,6 +6,7 @@
 BENCH_COLOR=1
 BENCH_DEFAULT_LOG=0
 BENCH_COUNTER=0
+BENCH_START=0
 
 # Initialize (or reset) the benchmarking environment
 #
@@ -14,6 +15,7 @@ bench_init() {
 	BENCH_COLOR=$1
 	BENCH_DEFAULT_LOG=$2
 	BENCH_COUNTER=0
+	BENCH_START=$(date +%s)
 	return 0
 }
 
@@ -75,6 +77,7 @@ bench_run() {
 		RED="\033[31m"
 		GREEN="\033[32m"
 		MAGENTA="\033[35m"
+		CYAN="\033[36m"
 		CLEAR="\033[0m"
 		BOLD="\033[1m"
 	else
@@ -90,9 +93,11 @@ bench_run() {
 
 	local fast_name=""
 	local fast_time=$((2 ** 32))
+	local fast_deviation=0
 
 	local slow_name=""
 	local slow_time=0
+	local slow_deviation=0
 
 	local today=$(date)
 	local start=$(date +%s)
@@ -143,7 +148,7 @@ bench_run() {
 			fi
 		done
 
-		echo -e "Benchmark $BOLD$name$CLEAR: $cmd"
+		echo -e "Benchmark $BOLD$name$CLEAR: \`$cmd\`"
 
 		local real_mean=${real_times[0]}
 		local real_deviation=0
@@ -151,8 +156,9 @@ bench_run() {
 		local real_min=0
 
 		echo -e "  Real time:"
-		echo -e "    Mean: $real_mean ± $real_deviation"
-		echo -e "    Range: $BLUE$real_max$CLEAR max ... $BLUE$real_min$CLEAR min"
+		echo -e "    Mean: $CYAN$real_mean$CLEAR s ± $MAGENTA$real_deviation$CLEAR s"
+		echo -e "    Range: $CYAN$real_max$CLEAR$BOLD max$CLEAR ..." \
+				"$CYAN$real_min$CLEAR$BOLD min$CLEAR"
 
 		local user_mean=${user_times[0]}
 		local user_deviation=0
@@ -160,8 +166,9 @@ bench_run() {
 		local user_min=0
 
 		echo -e "  User time:"
-		echo -e "    Mean: $user_mean ± $user_deviation"
-		echo -e "    Range: $BLUE$user_max$CLEAR max ... $BLUE$user_min$CLEAR min"
+		echo -e "    Mean: $CYAN$user_mean$CLEAR s ± $MAGENTA$user_deviation$CLEAR s"
+		echo -e "    Range: $CYAN$user_max$CLEAR$BOLD max$CLEAR ..." \
+				"$CYAN$user_min$CLEAR$BOLD min$CLEAR"
 
 		local sys_mean=${sys_times[0]}
 		local sys_deviation=0
@@ -169,33 +176,41 @@ bench_run() {
 		local sys_min=0
 
 		echo -e "  System time:"
-		echo -e "    Mean: $sys_mean ± $sys_deviation"
-		echo -e "    Range: $BLUE$sys_max$CLEAR max ... $BLUE$sys_min$CLEAR min"
+		echo -e "    Mean: $CYAN$sys_mean$CLEAR s ± $MAGENTA$sys_deviation$CLEAR s"
+		echo -e "    Range: $CYAN$sys_max$CLEAR$BOLD max$CLEAR ..." \
+				"$CYAN$sys_min$CLEAR$BOLD min$CLEAR"
 
 		local succs=$((runs - errs))
 		echo -e "  Runs: $RED$errs$CLEAR errors, $GREEN$succs$CLEAR successes" \
-				"over $BOLD$runs$CLEAR runs"
+				"over $BOLD$runs$CLEAR runs\n"
 
-		if [ $(echo "$real_mean <= $fast_time" | bc) == "1" ]
+		if (( $(bc <<< "$real_mean <= $fast_time") ))
 		then
 			fast_name=$name
 			fast_time=$real_mean
+			fast_deviation=$real_deviation
 		fi
 
-		if [ $(echo "$real_mean >= $slow_time" | bc) == "1" ]
+		if (( $(bc <<< "$real_mean >= $slow_time") ))
 		then
 			slow_name=$name
 			slow_time=$real_mean
+			slow_deviation=$real_deviation
 		fi
 	done
 
 	local end=$(date +%s)
 	local total=$((end - start))
+	local total2=$((end - BENCH_START))
 
 	echo "Summary:"
-	echo -e "  Total elapsed time: $BOLD$total$CLEAR seconds"
-	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR ($fast_time)"
-	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR ($slow_time)"
+	echo -e "  Fastest benchmark: $BOLD$fast_name$CLEAR," \
+			"$BOLD$fast_time ± $fast_deviation$CLEAR s"
+	echo -e "  Slowest benchmark: $BOLD$slow_name$CLEAR," \
+			"$BOLD$slow_time ± $slow_deviation$CLEAR s"
+	echo "  Total time:"
+	echo -e "    Elapsed since run: $CYAN$total$CLEAR s"
+	echo -e "    Elapsed since init: $CYAN$total2$CLEAR s"
 
 	TIMEFORMAT=old_format
 }
