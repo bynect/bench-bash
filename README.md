@@ -1,5 +1,14 @@
 # bench-bash
 
+A minimal benchmarking framework contained in a single bash script.
+
+## Dependencies
+
+* `bash`
+* `bc`
+* `awk`
+* `sort`
+
 ## Api
 
 To use `bench-bash` you need to source [`bench.in`](bench.in).
@@ -19,9 +28,9 @@ Call this function instead of manually manipulating `BENCH_*` variables.
 ```
 bench_init use_color default_log
            |         |
-		   |         `-- Log the result of benchmarks to file
-		   |
-		   `-- Use colors in output. Always disabled if stdout is not a terminal
+           |         `-- Log the result of benchmarks to file
+           |
+           `-- Use colors in output. Always disabled if stdout is not a terminal
 ```
 
 ### bench_add
@@ -31,11 +40,11 @@ Add a benchmark to the benchmarking environment.
 ```
 bench_add name runs cmd [inf] [outf] [errf]
           |    |    |   |     |      |
-		  |    |    |   |     `-- File in which the benchmark stdout/stderr is logged
-		  |    |    |   `-- File to pipe in the stdin of the benchmark. Default to nothing
-		  |    |    `-- Command to run for the benchmark
-		  |    `-- Number of runs for the benchmark
-		  `-- Name of the benchmark. If left blank the number of the benchmark is used
+          |    |    |   |     `-- File in which the benchmark stdout/stderr is logged
+          |    |    |   `-- File to pipe in the stdin of the benchmark. Default to nothing
+          |    |    `-- Command to run for the benchmark
+          |    `-- Number of runs for the benchmark
+          `-- Name of the benchmark. If left blank the number of the benchmark is used
 ```
 
 ### bench_run
