@@ -90,7 +90,9 @@ _bench_stat() {
 
 	_BENCH_MEAN=$(awk '{sum+=$1} END {print sum/NR}' <<< "$data")
 	_BENCH_DEVIATION=$(awk "{sum+=(\$1-$_BENCH_MEAN)^2} END {print sqrt((1/NR)*sum)}" <<< "$data")
-	_BENCH_ERROR=$(bc <<< "scale=4; tmp=$_BENCH_DEVIATION / sqrt($len); if (tmp>0 && tmp<1) print 0; tmp")
+
+	local tmp=$(sed -E 's/([+-]?[0-9.]+)[eE]\+?(-?)([0-9]+)/(\1*10^\2\3)/g' <<< "$_BENCH_DEVIATION")
+	_BENCH_ERROR=$(bc -l <<< "scale=4; tmp=$tmp / sqrt($len); if (tmp>0 && tmp<1) print 0; tmp")
 	return 0
 }
 
