@@ -220,7 +220,7 @@ bench_run() {
 
 		echo -e "Benchmark $BOLD$name$CLEAR: \`$cmd\`"
 
-		local real_sorted=($(sort -n <<< "${real_times[*]}"))
+		local real_sorted=($(tr ' ' '\n' <<< "${real_times[*]}" | sort -n))
 		local real_max=${real_sorted[$((runs - 1))]}
 		local real_min=${real_sorted[0]}
 
@@ -235,7 +235,7 @@ bench_run() {
 		echo -e "    Deviation: $MAGENTA$real_deviation$CLEAR s"
 		echo -e "    Error: $MAGENTA$real_error$CLEAR s"
 
-		local user_sorted=($(sort -n <<< "${user_times[*]}"))
+		local user_sorted=($(tr ' ' '\n' <<< "${user_times[*]}" | sort -n))
 		local user_max=${user_sorted[$((runs - 1))]}
 		local user_min=${user_sorted[0]}
 
@@ -250,7 +250,7 @@ bench_run() {
 		echo -e "    Deviation: $MAGENTA$user_deviation$CLEAR s"
 		echo -e "    Error: $MAGENTA$user_error$CLEAR s"
 
-		local sys_sorted=($(sort -n <<< "${sys_times[*]}"))
+		local sys_sorted=($(tr ' ' '\n' <<< "${sys_times[*]}" | sort -n))
 		local sys_max=${sys_sorted[$((runs - 1))]}
 		local sys_min=${sys_sorted[0]}
 
